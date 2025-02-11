@@ -1,6 +1,6 @@
-# Emotion_detection_with_CNN
+# Emotion Detection Project
 
-![emotion_detection](https://github.com/datamagic2020/Emotion_detection_with_CNN/blob/main/emoition_detection.png)
+![emotion_detection](https://github.com/DarshikaSahu/Emotion-Detection-Project/edit/main/emoition_detection.png)
 
 ### Packages need to be installed
 - pip install numpy
@@ -15,7 +15,7 @@
 
 ### Train Emotion detector
 - with all face expression images in the FER2013 Dataset
-- command --> python TranEmotionDetector.py
+- command --> python TrainEmotionDetector.py
 
 It will take several hours depends on your processor. (On i7 processor with 16 GB RAM it took me around 4 hours)
 after Training , you will find the trained model structure and weights are stored in your project directory.
