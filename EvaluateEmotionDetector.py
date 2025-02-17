@@ -1,173 +1,32 @@
-<<<<<<< HEAD
-import cv2
-import numpy as np
-from tensorflow.keras.models import model_from_json, Sequential
-import os
+import tensorflow as tf
+from tensorflow.keras.models import load_model
+from tensorflow.keras.preprocessing import image_dataset_from_directory
+from tensorflow.keras.utils import to_categorical
 
-# Emotion dictionary
-emotion_dict = {
-    0: "Angry", 1: "Disgusted", 2: "Fearful", 
-    3: "Happy", 4: "Neutral", 5: "Sad", 6: "Surprised"
-}
+# Load Model
+model = load_model('model/emotion_model.h5')
+model.summary()
 
-class MySequential(Sequential):
-    pass
+# Load Validation Dataset (Resize to 128x128 as expected by the model)
+validation_set = image_dataset_from_directory(
+    "data/test",
+    image_size=(128, 128),  
+    batch_size=32,
+    label_mode="int"  # Load labels as integers
+)
 
-# Load model structure
-model_path = "model/emotion_model.json"
-weights_path = "model/emotion_model.h5"
+# Convert labels to one-hot encoding
+def one_hot_labels(dataset, num_classes=7):
+    def process(image, label):
+        return image, tf.one_hot(label, depth=num_classes)  # Convert to one-hot
+    return dataset.map(process)
 
-if not os.path.exists(model_path) or not os.path.exists(weights_path):
-    raise FileNotFoundError("Model files not found. Ensure 'emotion_model.json' and 'emotion_model.h5' exist in the 'model' directory.")
+validation_set = one_hot_labels(validation_set)
 
-with open(model_path, 'r') as json_file:
-    loaded_model_json = json_file.read()
+# Evaluate Model
+def evaluate_model():
+    print("Evaluating the model...")
+    loss, accuracy = model.evaluate(validation_set)
+    print(f'Validation Loss: {loss:.4f}, Accuracy: {accuracy:.4f}')
 
-emotion_model = model_from_json(loaded_model_json, custom_objects={'Sequential': MySequential})
-
-# Load model weights
-emotion_model.load_weights(weights_path)
-print("✅ Loaded model successfully!")
-
-# Start the webcam feed
-cap = cv2.VideoCapture(0)  # Use 0 for default webcam
-
-if not cap.isOpened():
-    raise ValueError("Error: Could not access the webcam")
-
-# Load Haar cascade for face detection
-haar_cascade_path = "haarcascades/haarcascade_frontalface_default.xml"
-
-if not os.path.exists(haar_cascade_path):
-    raise FileNotFoundError("Haar cascade XML file not found. Ensure 'haarcascade_frontalface_default.xml' is in the correct directory.")
-
-face_detector = cv2.CascadeClassifier(haar_cascade_path)
-
-while True:
-    ret, frame = cap.read()
-    if not ret:
-        print("Error: Could not read frame from webcam.")
-        break
-
-    frame = cv2.resize(frame, (1280, 720))
-    gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-
-    # Detect faces in the frame
-    faces = face_detector.detectMultiScale(gray_frame, scaleFactor=1.3, minNeighbors=5)
-
-    for (x, y, w, h) in faces:
-        # Draw rectangle around detected face
-        cv2.rectangle(frame, (x, y-50), (x+w, y+h+10), (0, 255, 0), 4)
-
-        # Extract face region and preprocess
-        roi_gray = gray_frame[y:y+h, x:x+w]
-        cropped_img = cv2.resize(roi_gray, (48, 48))
-        cropped_img = np.expand_dims(np.expand_dims(cropped_img, -1), 0)  # Reshape for model
-
-        try:
-            # Predict emotion
-            emotion_prediction = emotion_model.predict(cropped_img)
-            maxindex = int(np.argmax(emotion_prediction))
-            emotion_label = emotion_dict[maxindex]
-
-            # Display detected emotion
-            cv2.putText(frame, emotion_label, (x+5, y-20), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2, cv2.LINE_AA)
-        except Exception as e:
-            print(f"Error in prediction: {e}")
-
-    cv2.imshow('Emotion Detection', frame)
-
-    # Press 'q' to exit
-    if cv2.waitKey(1) & 0xFF == ord('q'):
-        break
-
-# Release video capture and close windows
-cap.release()
-cv2.destroyAllWindows()
-=======
-import cv2
-import numpy as np
-from tensorflow.keras.models import model_from_json, Sequential
-import os
-
-# Emotion dictionary
-emotion_dict = {
-    0: "Angry", 1: "Disgusted", 2: "Fearful", 
-    3: "Happy", 4: "Neutral", 5: "Sad", 6: "Surprised"
-}
-
-class MySequential(Sequential):
-    pass
-
-# Load model structure
-model_path = "model/emotion_model.json"
-weights_path = "model/emotion_model.h5"
-
-if not os.path.exists(model_path) or not os.path.exists(weights_path):
-    raise FileNotFoundError("Model files not found. Ensure 'emotion_model.json' and 'emotion_model.h5' exist in the 'model' directory.")
-
-with open(model_path, 'r') as json_file:
-    loaded_model_json = json_file.read()
-
-emotion_model = model_from_json(loaded_model_json, custom_objects={'Sequential': MySequential})
-
-# Load model weights
-emotion_model.load_weights(weights_path)
-print("✅ Loaded model successfully!")
-
-# Start the webcam feed
-cap = cv2.VideoCapture(0)  # Use 0 for default webcam
-
-if not cap.isOpened():
-    raise ValueError("Error: Could not access the webcam")
-
-# Load Haar cascade for face detection
-haar_cascade_path = "haarcascades/haarcascade_frontalface_default.xml"
-
-if not os.path.exists(haar_cascade_path):
-    raise FileNotFoundError("Haar cascade XML file not found. Ensure 'haarcascade_frontalface_default.xml' is in the correct directory.")
-
-face_detector = cv2.CascadeClassifier(haar_cascade_path)
-
-while True:
-    ret, frame = cap.read()
-    if not ret:
-        print("Error: Could not read frame from webcam.")
-        break
-
-    frame = cv2.resize(frame, (1280, 720))
-    gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-
-    # Detect faces in the frame
-    faces = face_detector.detectMultiScale(gray_frame, scaleFactor=1.3, minNeighbors=5)
-
-    for (x, y, w, h) in faces:
-        # Draw rectangle around detected face
-        cv2.rectangle(frame, (x, y-50), (x+w, y+h+10), (0, 255, 0), 4)
-
-        # Extract face region and preprocess
-        roi_gray = gray_frame[y:y+h, x:x+w]
-        cropped_img = cv2.resize(roi_gray, (48, 48))
-        cropped_img = np.expand_dims(np.expand_dims(cropped_img, -1), 0)  # Reshape for model
-
-        try:
-            # Predict emotion
-            emotion_prediction = emotion_model.predict(cropped_img)
-            maxindex = int(np.argmax(emotion_prediction))
-            emotion_label = emotion_dict[maxindex]
-
-            # Display detected emotion
-            cv2.putText(frame, emotion_label, (x+5, y-20), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2, cv2.LINE_AA)
-        except Exception as e:
-            print(f"Error in prediction: {e}")
-
-    cv2.imshow('Emotion Detection', frame)
-
-    # Press 'q' to exit
-    if cv2.waitKey(1) & 0xFF == ord('q'):
-        break
-
-# Release video capture and close windows
-cap.release()
-cv2.destroyAllWindows()
->>>>>>> 6a7a58e8242c27ebf6b9b9e0e85c3033239db2ef
+evaluate_model()

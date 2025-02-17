@@ -1,171 +1,121 @@
-<<<<<<< HEAD
 import cv2
 import numpy as np
-from tensorflow.keras.models import model_from_json
-import os
+import tensorflow as tf
+import speech_recognition as sr
+import nltk
+import pyttsx3
+from tensorflow.keras.models import load_model
+from tensorflow.keras.preprocessing import image
+from nltk.sentiment import SentimentIntensityAnalyzer
 
-# Emotion dictionary
-emotion_dict = {
-    0: "Angry", 1: "Disgusted", 2: "Fearful", 
-    3: "Happy", 4: "Neutral", 5: "Sad", 6: "Surprised"
+# Load model and NLP
+model = load_model('model/emotion_model.h5')
+nltk.download('vader_lexicon')
+sia = SentimentIntensityAnalyzer()
+engine = pyttsx3.init()
+
+# Emotion categories
+emotion_labels = ['angry', 'disgust', 'fear', 'happy', 'neutral', 'sad', 'surprise']
+
+# Emotion-based music recommendations
+music_dict = {
+    'happy': 'play_happy.mp3',
+    'sad': 'play_sad.mp3',
+    'angry': 'play_angry.mp3',
+    'neutral': 'play_neutral.mp3',
+    'surprise': 'play_surprise.mp3'
 }
 
-# Load model structure
-model_path = "model/emotion_model.json"
-weights_path = "model/emotion_model.h5"
+# It'll be a sad day when you leave us
+# I'd do anything to make her happy
 
-if not os.path.exists(model_path) or not os.path.exists(weights_path):
-    raise FileNotFoundError("Model files not found. Ensure 'emotion_model.json' and 'emotion_model.h5' exist in the 'model' directory.")
+# Speech Recognition
+def recognize_speech():
+    recognizer = sr.Recognizer()
+    with sr.Microphone() as source:
+        print("🎤 Speak now...")
+        audio = recognizer.listen(source)
+    try:
+        text = recognizer.recognize_google(audio)
+        print("🗣️ You said:", text)
+        return text
+    except:
+        print("❌ Could not recognize speech")
+        return None
 
-with open(model_path, 'r') as json_file:
-    loaded_model_json = json_file.read()
+# Text Sentiment Analysis
+def analyze_text_sentiment(text):
+    sentiment = sia.polarity_scores(text)
+    if sentiment['compound'] >= 0.05:
+        return 'happy'
+    elif sentiment['compound'] <= -0.05:
+        return 'sad'
+    else:
+        return 'neutral'
 
-emotion_model = model_from_json(loaded_model_json)
+# Image Emotion Detection
+# img_path = "https://blog.stocksnap.io/content/images/2022/02/smiling-woman_W6GFOSFAXA.jpg2"
+# Today is a beautiful day to embrace happiness and spread smiles!
 
-# Load model weights
-emotion_model.load_weights(weights_path)
-print("✅ Loaded model from disk")
+def predict_emotion(img_path):
+    img = image.load_img(img_path, target_size=(128, 128))
+    img_array = image.img_to_array(img) / 255.0
+    img_array = np.expand_dims(img_array, axis=0)
+    prediction = model.predict(img_array)
+    return emotion_labels[np.argmax(prediction)]
 
-# Start the video feed
-video_path = "emotion_sample6.mp4"  # Change to 0 for webcam
+# Real-Time Emotion Detection from Webcam
+def live_emotion_detection():
+    cap = cv2.VideoCapture(0)
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            break
+        face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        faces = face_cascade.detectMultiScale(gray, 1.3, 5)
 
-cap = cv2.VideoCapture(video_path)
+        for (x, y, w, h) in faces:
+            face = frame[y:y+h, x:x+w]
+            face = cv2.resize(face, (128, 128)) / 255.0
+            face = np.expand_dims(face, axis=0)
+            prediction = model.predict(face)
+            detected_emotion = emotion_labels[np.argmax(prediction)]
+            
+            cv2.rectangle(frame, (x, y), (x+w, y+h), (255, 0, 0), 2)
+            cv2.putText(frame, detected_emotion, (x, y-10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (255, 0, 0), 2)
+        
+        cv2.imshow('Real-Time Emotion Detection', frame)
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
+    cap.release()
+    cv2.destroyAllWindows()
 
-if not cap.isOpened():
-    raise ValueError(f"❌ Error: Could not open video file {video_path}")
+# Main Execution
+if __name__ == "__main__":
+    print("Choose an option:")
+    print("1. Detect emotion from live webcam")
+    print("2. Detect emotion from an image")
+    print("3. Analyze text sentiment")
+    print("4. Detect emotion from speech")
+    choice = input("Enter option: ")
 
-# Load Haar cascade for face detection
-haar_cascade_path = "haarcascade_frontalface_default.xml"
+    if choice == '1':
+        live_emotion_detection()
+    elif choice == '2':
+        img_path = input("Enter image path: ")
+        emotion = predict_emotion(img_path)
+        print(f"Detected Emotion: {emotion}")
+    elif choice == '3':
+        text = input("Enter text: ")
+        emotion = analyze_text_sentiment(text)
+        print(f"Detected Emotion: {emotion}")
+    elif choice == '4':
+        text = recognize_speech()
+        if text:
+            emotion = analyze_text_sentiment(text)
+            print(f"Detected Emotion: {emotion}")
+    else:
+        print("Invalid choice!")
 
-if not os.path.exists(haar_cascade_path):
-    raise FileNotFoundError("Haar cascade XML file not found. Ensure 'haarcascade_frontalface_default.xml' is in the correct directory.")
-
-face_detector = cv2.CascadeClassifier(haar_cascade_path)
-
-while True:
-    ret, frame = cap.read()
-    if not ret:
-        print("🎬 Video ended or cannot be read.")
-        break
-
-    frame = cv2.resize(frame, (1280, 720))
-    gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-
-    # Detect faces in the frame
-    faces = face_detector.detectMultiScale(gray_frame, scaleFactor=1.3, minNeighbors=5)
-
-    for (x, y, w, h) in faces:
-        # Draw rectangle around detected face
-        cv2.rectangle(frame, (x, y-50), (x+w, y+h+10), (0, 255, 0), 4)
-
-        # Extract face region and preprocess
-        roi_gray = gray_frame[y:y+h, x:x+w]
-        cropped_img = cv2.resize(roi_gray, (48, 48))
-        cropped_img = np.expand_dims(np.expand_dims(cropped_img, -1), 0)  # Reshape for model
-
-        try:
-            # Predict emotion
-            emotion_prediction = emotion_model.predict(cropped_img)
-            maxindex = int(np.argmax(emotion_prediction))
-            emotion_label = emotion_dict[maxindex]
-
-            # Display detected emotion
-            cv2.putText(frame, emotion_label, (x+5, y-20), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2, cv2.LINE_AA)
-        except Exception as e:
-            print(f"⚠️ Error in prediction: {e}")
-
-    cv2.imshow('Emotion Detection', frame)
-
-    # Press 'q' to exit
-    if cv2.waitKey(1) & 0xFF == ord('q'):
-        break
-
-# Release video capture and close windows
-cap.release()
-cv2.destroyAllWindows()
-=======
-import cv2
-import numpy as np
-from tensorflow.keras.models import model_from_json
-import os
-
-# Emotion dictionary
-emotion_dict = {
-    0: "Angry", 1: "Disgusted", 2: "Fearful", 
-    3: "Happy", 4: "Neutral", 5: "Sad", 6: "Surprised"
-}
-
-# Load model structure
-model_path = "model/emotion_model.json"
-weights_path = "model/emotion_model.h5"
-
-if not os.path.exists(model_path) or not os.path.exists(weights_path):
-    raise FileNotFoundError("Model files not found. Ensure 'emotion_model.json' and 'emotion_model.h5' exist in the 'model' directory.")
-
-with open(model_path, 'r') as json_file:
-    loaded_model_json = json_file.read()
-
-emotion_model = model_from_json(loaded_model_json)
-
-# Load model weights
-emotion_model.load_weights(weights_path)
-print("✅ Loaded model from disk")
-
-# Start the video feed
-video_path = "emotion_sample6.mp4"  # Change to 0 for webcam
-
-cap = cv2.VideoCapture(video_path)
-
-if not cap.isOpened():
-    raise ValueError(f"❌ Error: Could not open video file {video_path}")
-
-# Load Haar cascade for face detection
-haar_cascade_path = "haarcascade_frontalface_default.xml"
-
-if not os.path.exists(haar_cascade_path):
-    raise FileNotFoundError("Haar cascade XML file not found. Ensure 'haarcascade_frontalface_default.xml' is in the correct directory.")
-
-face_detector = cv2.CascadeClassifier(haar_cascade_path)
-
-while True:
-    ret, frame = cap.read()
-    if not ret:
-        print("🎬 Video ended or cannot be read.")
-        break
-
-    frame = cv2.resize(frame, (1280, 720))
-    gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-
-    # Detect faces in the frame
-    faces = face_detector.detectMultiScale(gray_frame, scaleFactor=1.3, minNeighbors=5)
-
-    for (x, y, w, h) in faces:
-        # Draw rectangle around detected face
-        cv2.rectangle(frame, (x, y-50), (x+w, y+h+10), (0, 255, 0), 4)
-
-        # Extract face region and preprocess
-        roi_gray = gray_frame[y:y+h, x:x+w]
-        cropped_img = cv2.resize(roi_gray, (48, 48))
-        cropped_img = np.expand_dims(np.expand_dims(cropped_img, -1), 0)  # Reshape for model
-
-        try:
-            # Predict emotion
-            emotion_prediction = emotion_model.predict(cropped_img)
-            maxindex = int(np.argmax(emotion_prediction))
-            emotion_label = emotion_dict[maxindex]
-
-            # Display detected emotion
-            cv2.putText(frame, emotion_label, (x+5, y-20), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2, cv2.LINE_AA)
-        except Exception as e:
-            print(f"⚠️ Error in prediction: {e}")
-
-    cv2.imshow('Emotion Detection', frame)
-
-    # Press 'q' to exit
-    if cv2.waitKey(1) & 0xFF == ord('q'):
-        break
-
-# Release video capture and close windows
-cap.release()
-cv2.destroyAllWindows()
->>>>>>> 6a7a58e8242c27ebf6b9b9e0e85c3033239db2ef
+        # I wish someone would notice the sadness behind my smile

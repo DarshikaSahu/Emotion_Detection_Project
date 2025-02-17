@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Emotion Detection</title>
+    <script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tensorflow/3.21.0/tf.min.js"></script>
+    <script defer src="script2.js"></script>
+    <link rel="stylesheet" href="style2.css">
+</head>
+
+<body>
+    <div class="container">
+        <h1>Emotion Detection</h1>
+        <div class="options">
+            <!-- <input type="file" id="imageUpload"> -->
+            <!-- <button onclick="uploadImage()">Detect Emotion</button> -->
+            <button class="option-btn" id="img-btn" onclick="toggleOption('image')">Image Detection</button>
+            <button class="option-btn" id="text-btn" onclick="toggleOption('text')">Text Sentiment Analysis</button>
+            <button class="option-btn" id="speech-btn" onclick="toggleOption('speech')">Speech Recognition</button>
+        </div>
+
+        <div id="image-section" class="hidden">
+            <input type="file" id="fileInput" accept="image/*">
+            <button class="detect-btn" id="detection-btn" onclick="detectEmotion()">Detect Emotion</button>
+            <button class="detect-btn" id="webcam-btn" onclick="startWebcam()">Live Webcam</button>
+            <video id="webcam" autoplay></video>
+            <button onclick="captureImage()">Capture & Detect</button>
+            <canvas id="canvas"></canvas>
+            <p id="emotionResult"></p>
+        </div>
+
+        <div id="text-section" class="hidden">
+            <textarea id="textInput" placeholder="Enter your text..."></textarea>
+            <button class="detect-btn" id="analyze-btn" onclick="analyzeTextSentiment()">Analyze</button>
+            <h2 id="emotionText">Detected Emotion: </h2>
+            <p id="textResult"></p>
+        </div>
+
+        <div id="speech-section" class="hidden">
+            <button class="detect-btn" id="speak-btn" onclick="startSpeechRecognition()">Start Speaking</button>
+            <p id="speechResult">Say something...</p>
+        </div>
+    </div>
+
+</body>

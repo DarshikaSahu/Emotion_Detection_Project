@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Facial Expression Detector</title>
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css" integrity="sha512-Kc323vGBEqzTmouAECnVceyQqyqdsSiqLQISBL29aUW4U/M7pSPA/gEUZQqv1cwx4OnYxTxve5UMg5GT6L4JJg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Quicksand&display=swap" rel="stylesheet">
+
+    <!-- Link to External CSS -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="form-container" id="form-container">
+    <!-- Login Form -->
+    <form id="login-form">
+        <h3>Login Here</h3>
+        <label for="username">Username</label>
+        <input type="text" placeholder="Email or Phone" id="login-username">
+
+        <label for="password">Password</label>
+        <div class="password-container">
+            <input type="password" placeholder="Password" id="login-password">
+            <i class="fa-solid fa-eye" id="login-eye" onclick="togglePassword('login')"></i>
+        </div>
+
+        <button type="submit" onclick="window.location.href='second_page/index.html'">Log In</button>
+        <!-- <a href="second_page/index.html" class="option-btn" id="login-btn" onclick="toggleOption('image')"><span>Log In</span></a> -->
+
+        <p class="social-text">Login with google account</p>
+        <div class="social-icons">
+            <a href="https://www.Google.com"  class="social-icon" target="_blank"><i class="fa-brands fa-google"></i></a>
+        </div>
+
+        <p class="signup-text">Don't have an account? <a href="javascript:void(0);" onclick="toggleForm()">Sign Up</a></p>
+    </form>
+
+    <!-- Sign Up Form -->
+    <form id="signup-form" style="display: none;">
+        <h3>Sign Up</h3>
+        <label for="username">Username</label>
+        <input type="text" placeholder="Email or Phone" id="signup-username">
+
+        <label for="email">Email</label>
+        <input type="email" placeholder="Your Email" id="signup-email">
+
+        <label for="password">Password</label>
+        <div class="password-container">
+            <input type="password" placeholder="Password" id="signup-password">
+            <i class="fa-solid fa-eye" id="signup-eye" onclick="togglePassword('signup')"></i>
+        </div>
+
+        <label for="confirmPassword">Confirm Password</label>
+        <div class="password-container">
+            <input type="password" placeholder="Confirm Password" id="signup-confirm-password">
+            <i class="fa-solid fa-eye" id="signup-confirm-eye" onclick="togglePassword('signup-confirm')"></i>
+        </div>
+
+        <button type="submit" href="index.html">Sign Up</button>
+
+        <p class="social-text">Sign Up with a social media account</p>
+        <div class="social-icons">
+            <a href="https://www.Google.com"  class="social-icon" target="_blank"><i class="fa-brands fa-google"></i></a>
+        </div>
+
+        <p class="login-text">Already have an account? <a href="javascript:void(0);" onclick="toggleForm()">Login</a></p>
+    </form>
+</div>
+
+<!-- Link to External JS -->
+<script src="script.js"></script>
+
+</body>
+</html>

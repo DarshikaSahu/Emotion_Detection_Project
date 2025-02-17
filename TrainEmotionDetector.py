@@ -1,213 +1,83 @@
-<<<<<<< HEAD
-# Import required packages
-import cv2
-import tensorflow as tf
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Conv2D, MaxPooling2D, Dense, Dropout, Flatten
-from tensorflow.keras.optimizers import Adam
-from tensorflow.keras.preprocessing.image import ImageDataGenerator
 import os
+import numpy as np
+import tensorflow as tf
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
+from tensorflow.keras.applications import MobileNetV2
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense, Dropout, GlobalAveragePooling2D
+from tensorflow.keras.optimizers import Adam
+from tensorflow.keras.callbacks import ReduceLROnPlateau, EarlyStopping
+from sklearn.utils.class_weight import compute_class_weight
 
-# Ensure TensorFlow doesn't allocate all GPU memory
+# GPU Optimization
 gpu_devices = tf.config.experimental.list_physical_devices('GPU')
 if gpu_devices:
-    try:
-        for gpu in gpu_devices:
-            tf.config.experimental.set_memory_growth(gpu, True)
-        print("✅ GPU detected. Memory growth set.")
-    except RuntimeError as e:
-        print(f"⚠️ GPU memory growth error: {e}")
+    for gpu in gpu_devices:
+        tf.config.experimental.set_memory_growth(gpu, True)
+    print("✅ GPU detected. Memory growth enabled.")
+else:
+    print("⚠️ No GPU detected. Running on CPU.")
 
-# Disable OpenCL use in OpenCV for compatibility
-cv2.ocl.setUseOpenCL(False)
-
-# Define data paths
+# Data Paths
 train_dir = 'data/train'
-test_dir = 'data/test'
+validation_dir = 'data/test'
+img_size = (128, 128)
+batch_size = 32
+num_classes = 7  
 
-# Check if directories exist
-if not os.path.exists(train_dir) or not os.path.exists(test_dir):
-    raise FileNotFoundError("❌ Check that 'data/train' and 'data/test' directories exist before training.")
-
-print("✅ Data directories found. Proceeding with training.")
-
-# Initialize image data generator with rescaling
-train_data_gen = ImageDataGenerator(rescale=1.0 / 255)
-validation_data_gen = ImageDataGenerator(rescale=1.0 / 255)
-
-# Preprocess all train images
-train_generator = train_data_gen.flow_from_directory(
-    train_dir,
-    target_size=(48, 48),
-    batch_size=64,
-    color_mode="grayscale",
-    class_mode='categorical'
+# Data Augmentation
+datagen_train = ImageDataGenerator(
+    rescale=1./255,
+    rotation_range=40, 
+    width_shift_range=0.2, 
+    height_shift_range=0.2,  
+    shear_range=0.2,  
+    zoom_range=0.3,  
+    horizontal_flip=True,
+    fill_mode="nearest"
 )
 
-# Preprocess all test images
-validation_generator = validation_data_gen.flow_from_directory(
-    test_dir,
-    target_size=(48, 48),
-    batch_size=64,
-    color_mode="grayscale",
-    class_mode='categorical'
-)
+datagen_val = ImageDataGenerator(rescale=1./255)
 
-# Create model structure
-emotion_model = Sequential([
-    Conv2D(32, kernel_size=(3, 3), activation='relu', input_shape=(48, 48, 1)),
-    Conv2D(64, kernel_size=(3, 3), activation='relu'),
-    MaxPooling2D(pool_size=(2, 2)),
-    Dropout(0.25),
+train_set = datagen_train.flow_from_directory(train_dir, target_size=img_size, batch_size=batch_size, class_mode='categorical')
+validation_set = datagen_val.flow_from_directory(validation_dir, target_size=img_size, batch_size=batch_size, class_mode='categorical')
 
-    Conv2D(128, kernel_size=(3, 3), activation='relu'),
-    MaxPooling2D(pool_size=(2, 2)),
-    Conv2D(128, kernel_size=(3, 3), activation='relu'),
-    MaxPooling2D(pool_size=(2, 2)),
-    Dropout(0.25),
+# Compute Class Weights
+class_labels = train_set.classes
+class_weights = compute_class_weight('balanced', classes=np.unique(class_labels), y=class_labels)
+class_weights_dict = dict(enumerate(class_weights))
 
-    Flatten(),
-    Dense(1024, activation='relu'),
+# Model Definition
+base_model = MobileNetV2(weights='imagenet', include_top=False, input_shape=(128, 128, 3))
+base_model.trainable = False  # Freeze initial layers
+
+model = Sequential([
+    base_model,
+    GlobalAveragePooling2D(),
+    Dense(256, activation='relu'),
     Dropout(0.5),
-    Dense(7, activation='softmax')  # 7 output classes for emotions
+    Dense(num_classes, activation='softmax')
 ])
 
-# Compile the model
-emotion_model.compile(
-    loss='categorical_crossentropy',
-    optimizer=Adam(learning_rate=0.0001, decay=1e-6),
-    metrics=['accuracy']
-)
+# Optimizer and Callbacks
+lr_scheduler = ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=3, verbose=1)
+early_stopping = EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True, verbose=1)
 
-# Train the model
-print("🚀 Training started...")
-emotion_model_info = emotion_model.fit(
-    train_generator,
-    steps_per_epoch=len(train_generator),
-    epochs=50,
-    validation_data=validation_generator,
-    validation_steps=len(validation_generator)
-)
-print("✅ Training completed successfully!")
+model.compile(optimizer=Adam(learning_rate=0.0001), loss='categorical_crossentropy', metrics=['accuracy'])
 
-# Ensure model directory exists
-model_dir = "model"
-if not os.path.exists(model_dir):
-    os.makedirs(model_dir)
+# Train the Model
+model.fit(train_set, validation_data=validation_set, epochs=50, callbacks=[early_stopping, lr_scheduler], class_weight=class_weights_dict)
 
-# Save model structure to JSON file
-model_json = emotion_model.to_json()
-with open(os.path.join(model_dir, "emotion_model.json"), "w") as json_file:
-    json_file.write(model_json)
+# Unfreeze some base model layers for fine-tuning
+for layer in base_model.layers[-30:]:
+    layer.trainable = True
 
-# Save trained model weights
-emotion_model.save_weights(os.path.join(model_dir, 'emotion_model.h5'))
+# Re-compile with a lower learning rate
+model.compile(optimizer=Adam(learning_rate=0.00001), loss='categorical_crossentropy', metrics=['accuracy'])
 
-print("🎉 Model training completed and saved successfully!")
-=======
-# Import required packages
-import cv2
-import tensorflow as tf
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Conv2D, MaxPooling2D, Dense, Dropout, Flatten
-from tensorflow.keras.optimizers import Adam
-from tensorflow.keras.preprocessing.image import ImageDataGenerator
-import os
+# Continue training for fine-tuning
+model.fit(train_set, validation_data=validation_set, epochs=10, callbacks=[early_stopping, lr_scheduler], class_weight=class_weights_dict)
 
-# Ensure TensorFlow doesn't allocate all GPU memory
-gpu_devices = tf.config.experimental.list_physical_devices('GPU')
-if gpu_devices:
-    try:
-        for gpu in gpu_devices:
-            tf.config.experimental.set_memory_growth(gpu, True)
-        print("✅ GPU detected. Memory growth set.")
-    except RuntimeError as e:
-        print(f"⚠️ GPU memory growth error: {e}")
-
-# Disable OpenCL use in OpenCV for compatibility
-cv2.ocl.setUseOpenCL(False)
-
-# Define data paths
-train_dir = 'data/train'
-test_dir = 'data/test'
-
-# Check if directories exist
-if not os.path.exists(train_dir) or not os.path.exists(test_dir):
-    raise FileNotFoundError("❌ Check that 'data/train' and 'data/test' directories exist before training.")
-
-print("✅ Data directories found. Proceeding with training.")
-
-# Initialize image data generator with rescaling
-train_data_gen = ImageDataGenerator(rescale=1.0 / 255)
-validation_data_gen = ImageDataGenerator(rescale=1.0 / 255)
-
-# Preprocess all train images
-train_generator = train_data_gen.flow_from_directory(
-    train_dir,
-    target_size=(48, 48),
-    batch_size=64,
-    color_mode="grayscale",
-    class_mode='categorical'
-)
-
-# Preprocess all test images
-validation_generator = validation_data_gen.flow_from_directory(
-    test_dir,
-    target_size=(48, 48),
-    batch_size=64,
-    color_mode="grayscale",
-    class_mode='categorical'
-)
-
-# Create model structure
-emotion_model = Sequential([
-    Conv2D(32, kernel_size=(3, 3), activation='relu', input_shape=(48, 48, 1)),
-    Conv2D(64, kernel_size=(3, 3), activation='relu'),
-    MaxPooling2D(pool_size=(2, 2)),
-    Dropout(0.25),
-
-    Conv2D(128, kernel_size=(3, 3), activation='relu'),
-    MaxPooling2D(pool_size=(2, 2)),
-    Conv2D(128, kernel_size=(3, 3), activation='relu'),
-    MaxPooling2D(pool_size=(2, 2)),
-    Dropout(0.25),
-
-    Flatten(),
-    Dense(1024, activation='relu'),
-    Dropout(0.5),
-    Dense(7, activation='softmax')  # 7 output classes for emotions
-])
-
-# Compile the model
-emotion_model.compile(
-    loss='categorical_crossentropy',
-    optimizer=Adam(learning_rate=0.0001, decay=1e-6),
-    metrics=['accuracy']
-)
-
-# Train the model
-print("🚀 Training started...")
-emotion_model_info = emotion_model.fit(
-    train_generator,
-    steps_per_epoch=len(train_generator),
-    epochs=50,
-    validation_data=validation_generator,
-    validation_steps=len(validation_generator)
-)
-print("✅ Training completed successfully!")
-
-# Ensure model directory exists
-model_dir = "model"
-if not os.path.exists(model_dir):
-    os.makedirs(model_dir)
-
-# Save model structure to JSON file
-model_json = emotion_model.to_json()
-with open(os.path.join(model_dir, "emotion_model.json"), "w") as json_file:
-    json_file.write(model_json)
-
-# Save trained model weights
-emotion_model.save_weights(os.path.join(model_dir, 'emotion_model.h5'))
-
-print("🎉 Model training completed and saved successfully!")
->>>>>>> 6a7a58e8242c27ebf6b9b9e0e85c3033239db2ef
+# Save the model
+model.save('model/emotion_model.h5')
+print("✅ Model training complete!")
