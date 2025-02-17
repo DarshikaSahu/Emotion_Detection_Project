@@ -1,7 +1,5 @@
 # Emotion Detection Project
 
-![emotion_detection](https://github.com/DarshikaSahu/Emotion-Detection-Project/edit/main/emoition_detection.png)
-
 ### Packages need to be installed
 - pip install numpy
 - pip install opencv-python
